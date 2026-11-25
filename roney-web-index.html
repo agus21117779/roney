@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>RONEY — Gestión empresarial</title>
+  <meta name="description" content="RONEY, plataforma de gestión empresarial">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{--blue:#1769c2;--navy:#172b45;--bg:#f4f7fb;--line:#e4eaf2;--muted:#718096;--green:#159768}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--navy);font:15px Inter,system-ui,Arial,sans-serif}
+    button,input{font:inherit}button{cursor:pointer;border:0;border-radius:10px;padding:11px 15px;background:var(--blue);color:#fff;font-weight:650}
+    button.secondary{background:#edf3fa;color:var(--navy)}button.danger{background:#fff0f0;color:#b42318}
+    input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:white;color:var(--navy)}
+    label{display:block;font-size:13px;font-weight:650;margin:12px 0 6px}
+    .shell{min-height:100vh;display:grid;grid-template-columns:245px 1fr}.side{background:white;border-right:1px solid var(--line);padding:22px 16px;display:flex;flex-direction:column}
+    .brand{font-size:25px;font-weight:850;letter-spacing:2px;color:var(--blue);padding:3px 12px 26px}.brand small{display:block;font-size:10px;letter-spacing:2px;color:var(--muted);font-weight:650}
+    .nav{display:grid;gap:6px}.nav button{background:transparent;color:#52647b;text-align:left;font-weight:600}.nav button.active,.nav button:hover{background:#eaf3ff;color:var(--blue)}
+    .main{padding:28px;max-width:1300px;width:100%;margin:auto}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:25px}
+    h1{font-size:27px;margin:0 0 5px}h2{font-size:18px;margin:0 0 16px}.muted{color:var(--muted)}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:18px 0}
+    .card,.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:18px}.metric{font-size:26px;font-weight:800;margin-top:10px}.metric-label{font-size:13px;color:var(--muted)}
+    .panel{margin-top:16px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.formrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .notice{padding:12px 14px;border-radius:10px;background:#eef5ff;color:#24558a;margin:12px 0;font-size:13px}
+    .error{background:#fff0f0;color:#a12a2a}.success{background:#eaf8f1;color:#126b49}
+    table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:11px 8px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-size:12px}
+    .hidden{display:none!important}.auth{max-width:430px;margin:8vh auto;background:white;border:1px solid var(--line);padding:28px;border-radius:18px}
+    .auth h1{color:var(--blue);letter-spacing:2px}.auth button{width:100%;margin-top:14px}.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .pill{display:inline-block;padding:5px 9px;border-radius:20px;background:#eaf8f1;color:#126b49;font-size:12px;font-weight:700}
+    @media(max-width:850px){.shell{grid-template-columns:1fr}.side{border-right:0;border-bottom:1px solid var(--line);padding:12px}.brand{padding:5px 8px 12px}.nav{grid-template-columns:repeat(3,1fr)}.nav button{font-size:12px;padding:9px}.main{padding:18px}.cards{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:520px){.grid2,.formrow{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}.cards{gap:9px}.card{padding:13px}.metric{font-size:21px}}
+  </style>
+</head>
+<body>
+  <section id="setup" class="auth">
+    <h1>RONEY</h1><p class="muted">Configuración inicial de conexión</p>
+    <div class="notice">Pegá los datos públicos de tu proyecto Supabase. La clave <b>anon / publishable</b> es la clave pública. Nunca pegues aquí la <b>service_role</b>.</div>
+    <label>Project URL</label><input id="projectUrl" placeholder="https://xxxxxxxx.supabase.co">
+    <label>Publishable key / anon key</label><input id="publicKey" placeholder="sb_publishable_... o eyJ...">
+    <button id="connectBtn">Conectar RONEY</button>
+    <div id="setupMsg" class="notice hidden"></div>
+  </section>
+
+  <section id="auth" class="auth hidden">
+    <h1>RONEY</h1><p class="muted">Tu negocio, organizado en un solo lugar.</p>
+    <label>Correo electrónico</label><input id="email" type="email" autocomplete="email" placeholder="tu@email.com">
+    <label>Contraseña</label><input id="password" type="password" autocomplete="current-password" placeholder="Mínimo 6 caracteres">
+    <div class="actions"><button id="loginBtn">Iniciar sesión</button><button class="secondary" id="signupBtn">Crear cuenta</button></div>
+    <div id="authMsg" class="notice hidden"></div>
+  </section>
+
+  <section id="companySetup" class="auth hidden">
+    <h1>RONEY</h1><h2>Creá tu empresa</h2>
+    <label>Nombre de la empresa</label><input id="companyName" placeholder="Mi empresa">
+    <label>Tipo de negocio</label><input id="companyType" placeholder="Restaurante, tienda, servicios...">
+    <label>Moneda</label><input id="companyCurrency" value="UYU">
+    <button id="createCompanyBtn">Crear empresa</button>
+    <div id="companyMsg" class="notice hidden"></div>
+  </section>
+
+  <div id="app" class="shell hidden">
+    <aside class="side">
+      <div class="brand">RONEY<small>BUSINESS PLATFORM</small></div>
+      <div class="nav">
+        <button class="active" data-page="dashboard">▦　Dashboard</button>
+        <button data-page="sales">↗　Ventas</button>
+        <button data-page="expenses">↘　Gastos</button>
+        <button data-page="products">▤　Inventario</button>
+        <button data-page="alerts">♧　Alertas</button>
+      </div>
+      <div style="margin-top:auto;padding:18px 8px 4px"><div id="userEmail" class="muted" style="font-size:12px;overflow-wrap:anywhere"></div><button class="secondary" id="logoutBtn" style="width:100%;margin-top:10px">Cerrar sesión</button></div>
+    </aside>
+    <main class="main">
+      <div class="top"><div><h1 id="pageTitle">Dashboard</h1><div class="muted" id="companyLabel">Resumen de tu empresa</div></div><span class="pill">RONEY FREE</span></div>
+      <div id="appMsg" class="notice hidden"></div>
+      <section id="page-dashboard">
+        <div class="cards">
+          <div class="card"><div class="metric-label">Ventas registradas</div><div class="metric" id="salesTotal">—</div></div>
+          <div class="card"><div class="metric-label">Gastos registrados</div><div class="metric" id="expensesTotal">—</div></div>
+          <div class="card"><div class="metric-label">Resultado</div><div class="metric" id="profitTotal">—</div></div>
+          <div class="card"><div class="metric-label">Productos</div><div class="metric" id="productCount">—</div></div>
+        </div>
+        <div class="panel"><h2>Actividad reciente</h2><div id="recentList" class="muted">Cargando datos...</div></div>
+      </section>
+      <section id="page-sales" class="hidden">
+        <div class="panel"><h2>Registrar venta</h2><div class="formrow"><div><label>Descripción</label><input id="saleDescription" placeholder="Venta del día"></div><div><label>Monto</label><input id="saleAmount" type="number" min="0.01" step="0.01" placeholder="0.00"></div></div><button id="addSale" style="margin-top:14px">Guardar venta</button></div>
+        <div class="panel"><h2>Ventas</h2><div id="salesTable"></div></div>
+      </section>
+      <section id="page-expenses" class="hidden">
+        <div class="panel"><h2>Registrar gasto</h2><div class="formrow"><div><label>Descripción</label><input id="expenseDescription" placeholder="Compra de materiales"></div><div><label>Monto</label><input id="expenseAmount" type="number" min="0.01" step="0.01" placeholder="0.00"></div></div><button id="addExpense" style="margin-top:14px">Guardar gasto</button></div>
+        <div class="panel"><h2>Gastos</h2><div id="expensesTable"></div></div>
+      </section>
+      <section id="page-products" class="hidden">
+        <div class="panel"><h2>Agregar producto</h2><div class="formrow"><div><label>Nombre</label><input id="productName" placeholder="Producto"></div><div><label>Cantidad</label><input id="productQuantity" type="number" min="0" step="1" placeholder="0"></div></div><label>Precio unitario</label><input id="productPrice" type="number" min="0" step="0.01" placeholder="0.00"><button id="addProduct" style="margin-top:14px">Guardar producto</button></div>
+        <div class="panel"><h2>Inventario</h2><div id="productsTable"></div></div>
+      </section>
+      <section id="page-alerts" class="hidden"><div class="panel"><h2>Centro de alertas</h2><div id="alertsList" class="muted">Cargando alertas...</div></div></section>
+    </main>
+  </div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  let sb = null, user = null, company = null;
+  const money = n => new Intl.NumberFormat('es-UY',{style:'currency',currency:company?.moneda || 'UYU'}).format(Number(n||0));
+  function message(id, text, error=false){const el=$(id);el.textContent=text;el.classList.remove('hidden','error','success');el.classList.add(error?'error':'success');}
+  function show(id){['setup','auth','companySetup','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id));}
+  function table(rows, cols){if(!rows.length)return '<p class="muted">Todavía no hay registros.</p>';return '<div style="overflow:auto"><table><thead><tr>'+cols.map(c=>'<th>'+c[1]+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+cols.map(c=>'<td>'+String(r[c[0]]??'—').replace(/[&<>"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';}
+  async function loadCompany(){
+    const {data,error}=await sb.from('empresas').select('id,nombre,tipo,moneda').eq('owner_id',user.id).limit(1).maybeSingle();
+    if(error) throw error; company=data;
+    if(!company){show('companySetup');return;}
+    $('companyLabel').textContent=company.nombre+' · '+(company.tipo||'Empresa');
+    $('userEmail').textContent=user.email||'Cuenta RONEY'; show('app'); await refresh();
+  }
+  async function refresh(){
+    const [s,e,p,a]=await Promise.all([
+      sb.from('ventas').select('descripcion,monto,fecha').eq('empresa_id',company.id).order('fecha',{ascending:false}).limit(100),
+      sb.from('gastos').select('descripcion,monto,fecha').eq('empresa_id',company.id).order('fecha',{ascending:false}).limit(100),
+      sb.from('productos').select('nombre,cantidad,precio').eq('empresa_id',company.id).order('nombre'),
+      sb.from('alertas').select('titulo,mensaje,prioridad,creada_en,leida').eq('empresa_id',company.id).order('creada_en',{ascending:false}).limit(50)
+    ]);
+    for(const x of [s,e,p,a])if(x.error)throw x.error;
+    const sales=s.data||[], expenses=e.data||[], products=p.data||[], alerts=a.data||[];
+    const st=sales.reduce((n,x)=>n+Number(x.monto||0),0), et=expenses.reduce((n,x)=>n+Number(x.monto||0),0);
+    $('salesTotal').textContent=money(st);$('expensesTotal').textContent=money(et);$('profitTotal').textContent=money(st-et);$('productCount').textContent=products.length;
+    $('salesTable').innerHTML=table(sales,[['descripcion','Descripción'],['monto','Monto'],['fecha','Fecha']]);
+    $('expensesTable').innerHTML=table(expenses,[['descripcion','Descripción'],['monto','Monto'],['fecha','Fecha']]);
+    $('productsTable').innerHTML=table(products,[['nombre','Producto'],['cantidad','Cantidad'],['precio','Precio']]);
+    $('recentList').innerHTML=table([...sales.slice(0,4).map(x=>({...x,tipo:'Venta'})),...expenses.slice(0,4).map(x=>({...x,tipo:'Gasto'}))].sort((x,y)=>String(y.fecha).localeCompare(String(x.fecha))).slice(0,7),[['tipo','Tipo'],['descripcion','Descripción'],['monto','Monto'],['fecha','Fecha']]);
+    $('alertsList').innerHTML=alerts.length?alerts.map(x=>'<div class="notice '+(x.prioridad==='urgente'?'error':'')+'"><b>'+x.titulo+'</b><br>'+x.mensaje+'<br><small>'+new Date(x.creada_en).toLocaleString('es-UY')+'</small></div>').join(''):'No hay alertas por ahora.';
+  }
+  async function addRecord(tableName, payload, inputs){
+    const {error}=await sb.from(tableName).insert({...payload,empresa_id:company.id});
+    if(error)throw error;inputs.forEach(id=>$(id).value='');message('appMsg','Registro guardado correctamente.');await refresh();
+  }
+  $('connectBtn').onclick=async()=>{
+    const url=$('projectUrl').value.trim(),key=$('publicKey').value.trim();
+    if(!url||!key){message('setupMsg','Completá la URL y la clave pública.',true);return;}
+    try{sb=window.supabase.createClient(url,key);localStorage.setItem('roney_url',url);localStorage.setItem('roney_key',key);const {data}=await sb.auth.getSession();if(data.session){user=data.session.user;await loadCompany();}else show('auth');}
+    catch(e){message('setupMsg',e.message||'No se pudo conectar.',true);}
+  };
+  const savedUrl=localStorage.getItem('roney_url'),savedKey=localStorage.getItem('roney_key');
+  if(savedUrl&&savedKey){$('projectUrl').value=savedUrl;$('publicKey').value=savedKey;}
+  $('loginBtn').onclick=async()=>{try{const {data,error}=await sb.auth.signInWithPassword({email:$('email').value,password:$('password').value});if(error)throw error;user=data.user;await loadCompany();}catch(e){message('authMsg',e.message,true);}};
+  $('signupBtn').onclick=async()=>{try{const {data,error}=await sb.auth.signUp({email:$('email').value,password:$('password').value});if(error)throw error;if(data.session){user=data.user;await loadCompany();}else message('authMsg','Cuenta creada. Revisá tu correo para confirmar y luego iniciá sesión.');}catch(e){message('authMsg',e.message,true);}};
+  $('createCompanyBtn').onclick=async()=>{try{const {data,error}=await sb.from('empresas').insert({nombre:$('companyName').value,tipo:$('companyType').value,moneda:$('companyCurrency').value,owner_id:user.id}).select('id,nombre,tipo,moneda').single();if(error)throw error;company=data;$('companyLabel').textContent=company.nombre;show('app');await refresh();}catch(e){message('companyMsg',e.message,true);}};
+  $('addSale').onclick=async()=>{try{await addRecord('ventas',{descripcion:$('saleDescription').value,monto:Number($('saleAmount').value),fecha:new Date().toISOString().slice(0,10)},['saleDescription','saleAmount']);}catch(e){message('appMsg',e.message,true);}};
+  $('addExpense').onclick=async()=>{try{await addRecord('gastos',{descripcion:$('expenseDescription').value,monto:Number($('expenseAmount').value),fecha:new Date().toISOString().slice(0,10)},['expenseDescription','expenseAmount']);}catch(e){message('appMsg',e.message,true);}};
+  $('addProduct').onclick=async()=>{try{await addRecord('productos',{nombre:$('productName').value,cantidad:Number($('productQuantity').value),precio:Number($('productPrice').value)},['productName','productQuantity','productPrice']);}catch(e){message('appMsg',e.message,true);}};
+  $('logoutBtn').onclick=async()=>{await sb.auth.signOut();user=null;company=null;show('auth');};
+  document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x===b));['dashboard','sales','expenses','products','alerts'].forEach(p=>$('page-'+p).classList.toggle('hidden',p!==b.dataset.page));$('pageTitle').textContent=({dashboard:'Dashboard',sales:'Ventas',expenses:'Gastos',products:'Inventario',alerts:'Alertas'})[b.dataset.page];});
+  if(!savedUrl||!savedKey)show('setup');
+})();
+</script>
+</body>
+</html>
