@@ -31,15 +31,7 @@
   </style>
 </head>
 <body>
-  <section id="setup" class="auth">
-    <h1>RONEY</h1><p class="muted">Configuración inicial de conexión</p>
-    <div class="notice">Pegá los datos públicos de tu proyecto Supabase. La clave <b>anon / publishable</b> es la clave pública. Nunca pegues aquí la <b>service_role</b>.</div>
-    <label>Project URL</label><input id="projectUrl" placeholder="https://xxxxxxxx.supabase.co">
-    <label>Publishable key / anon key</label><input id="publicKey" placeholder="sb_publishable_... o eyJ...">
-    <button id="connectBtn">Conectar RONEY</button>
-    <div id="setupMsg" class="notice hidden"></div>
-  </section>
-
+<!-- Configuración de conexión desactivada -->
   <section id="auth" class="auth hidden">
     <h1>RONEY</h1><p class="muted">Tu negocio, organizado en un solo lugar.</p>
     <label>Correo electrónico</label><input id="email" type="email" autocomplete="email" placeholder="tu@email.com">
@@ -103,7 +95,7 @@
   let sb = null, user = null, company = null;
   const money = n => new Intl.NumberFormat('es-UY',{style:'currency',currency:company?.moneda || 'UYU'}).format(Number(n||0));
   function message(id, text, error=false){const el=$(id);el.textContent=text;el.classList.remove('hidden','error','success');el.classList.add(error?'error':'success');}
-  function show(id){['setup','auth','companySetup','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id));}
+function show(id){['auth','companySetup','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id));}
   function table(rows, cols){if(!rows.length)return '<p class="muted">Todavía no hay registros.</p>';return '<div style="overflow:auto"><table><thead><tr>'+cols.map(c=>'<th>'+c[1]+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+cols.map(c=>'<td>'+String(r[c[0]]??'—').replace(/[&<>"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';}
   async function loadCompany(){
     const {data,error}=await sb.from('empresas').select('id,nombre,tipo,moneda').eq('owner_id',user.id).limit(1).maybeSingle();
@@ -133,14 +125,29 @@
     const {error}=await sb.from(tableName).insert({...payload,empresa_id:company.id});
     if(error)throw error;inputs.forEach(id=>$(id).value='');message('appMsg','Registro guardado correctamente.');await refresh();
   }
-  $('connectBtn').onclick=async()=>{
-    const url=$('projectUrl').value.trim(),key=$('publicKey').value.trim();
-    if(!url||!key){message('setupMsg','Completá la URL y la clave pública.',true);return;}
-    try{sb=window.supabase.createClient(url,key);localStorage.setItem('roney_url',url);localStorage.setItem('roney_key',key);const {data}=await sb.auth.getSession();if(data.session){user=data.session.user;await loadCompany();}else show('auth');}
-    catch(e){message('setupMsg',e.message||'No se pudo conectar.',true);}
-  };
+const SUPABASE_URL = 'https://hbmjpbfwgszalabnxekj.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_nsQ3CRv3RB78cgmcZisdYA_Y0Y6GIJ8';
+
+sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+(async () => {
+  try {
+    const { data, error } = await sb.auth.getSession();
+    if (error) throw error;
+
+    if (data.session) {
+      user = data.session.user;
+      await loadCompany();
+    } else {
+      show('auth');
+    }
+  } catch (e) {
+    show('auth');
+    message('authMsg', e.message || 'Error de conexión.', true);
+  }
+})();
   const savedUrl=localStorage.getItem('roney_url'),savedKey=localStorage.getItem('roney_key');
-  if(savedUrl&&savedKey){$('projectUrl').value=savedUrl;$('publicKey').value=savedKey;}
+
   $('loginBtn').onclick=async()=>{try{const {data,error}=await sb.auth.signInWithPassword({email:$('email').value,password:$('password').value});if(error)throw error;user=data.user;await loadCompany();}catch(e){message('authMsg',e.message,true);}};
   $('signupBtn').onclick=async()=>{try{const {data,error}=await sb.auth.signUp({email:$('email').value,password:$('password').value});if(error)throw error;if(data.session){user=data.user;await loadCompany();}else message('authMsg','Cuenta creada. Revisá tu correo para confirmar y luego iniciá sesión.');}catch(e){message('authMsg',e.message,true);}};
   $('createCompanyBtn').onclick=async()=>{try{const {data,error}=await sb.from('empresas').insert({nombre:$('companyName').value,tipo:$('companyType').value,moneda:$('companyCurrency').value,owner_id:user.id}).select('id,nombre,tipo,moneda').single();if(error)throw error;company=data;$('companyLabel').textContent=company.nombre;show('app');await refresh();}catch(e){message('companyMsg',e.message,true);}};
@@ -149,7 +156,7 @@
   $('addProduct').onclick=async()=>{try{await addRecord('productos',{nombre:$('productName').value,cantidad:Number($('productQuantity').value),precio:Number($('productPrice').value)},['productName','productQuantity','productPrice']);}catch(e){message('appMsg',e.message,true);}};
   $('logoutBtn').onclick=async()=>{await sb.auth.signOut();user=null;company=null;show('auth');};
   document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x===b));['dashboard','sales','expenses','products','alerts'].forEach(p=>$('page-'+p).classList.toggle('hidden',p!==b.dataset.page));$('pageTitle').textContent=({dashboard:'Dashboard',sales:'Ventas',expenses:'Gastos',products:'Inventario',alerts:'Alertas'})[b.dataset.page];});
-  if(!savedUrl||!savedKey)show('setup');
+
 })();
 </script>
 </body>
